@@ -45,7 +45,11 @@ define(["jquery", "events", "./urs"], function($, events, urs){
         "163.com": "http://push.mail.163.com/cometd",
         "126.com": "http://push.mail.126.com/cometd",
         "yeah.net": "http://push.mail.yeah.net/cometd",
-        "netease.com": "http://push.mail.yeah.net/cometd"
+        "netease.com": "http://push.mail.yeah.net/cometd",
+        "188.com": "http://push.mail.163.com/cometd",
+        "vip.188.com": "http://push.mail.163.com/cometd",
+        "vip.126.com": "http://push.mail.163.com/cometd",
+        "vip.163.com": "http://push.mail.163.com/cometd"
     };
     var RETRY_DELAY = 60000;
     var POLLING_TIMEOUT = 120000;
