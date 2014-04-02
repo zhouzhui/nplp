@@ -25,41 +25,40 @@ define(["jquery", "./codec"], function($, codec){
     
     /**
      * 登录网易通行证时出现的错误
-     * @param {string} code 错误码
+     * @param {string} errCode 错误码
      * @param {any} context 发生错误时的上下文信息
      */
-    var URSError = function(code, context) {
+    var URSError = function(errCode, context) {
         this.context = context;
-        if(typeof(code) === "object" && code.code && code.msg) {
-            this.code = code.code;
-            this.msg = code.msg;
+        if(typeof(errCode) === "object" && errCode.errCode && errCode.msg) {
+            this.errCode = errCode.errCode;
+            this.msg = errCode.msg;
         } else {
-            this.code = "" + code;
-            this.msg = URSError.msgForCode(this.code);
+            this.errCode = "" + errCode;
+            this.msg = URSError.msgForCode(this.errCode);
             if(!this.msg) {
-                this.code = URSError.SERVER_ERR.code;
+                this.errCode = URSError.SERVER_ERR.errCode;
                 this.msg = URSError.SERVER_ERR.msg;
             }
         }
     };
     URSError.prototype = new Error();
     URSError.prototype.constructor = URSError;
-    URSError.name = "URSError";
-    URSError.ILLEGAL_PARAM = {code: "401", msg: "参数错误"};
-    URSError.EXCEED_LIMIT = {code: "412", msg: "密码错误次数过多，请1小时后再重试"};
-    URSError.NOT_EXISTS = {code: "420", msg: "帐号不存在"};
-    URSError.FROZEN = {code: "422", msg: "帐号被冻结"};
-    URSError.NOT_MATCH = {code: "460", msg: "密码错误"};
-    URSError.ABORT = {code: "498", msg: "请求中止"};
-    URSError.NET_ERR = {code: "499", msg: "网络异常"};
-    URSError.SERVER_ERR = {code: "500", msg: "服务端异常"};
-    URSError.TIMEOUT = {code: "504", msg: "超时"};
-    URSError.msgForCode = function(code) {
-        if(!code) {
+    URSError.ILLEGAL_PARAM = {errCode: "401", msg: "参数错误"};
+    URSError.EXCEED_LIMIT = {errCode: "412", msg: "密码错误次数过多，请1小时后再重试"};
+    URSError.NOT_EXISTS = {errCode: "420", msg: "帐号不存在"};
+    URSError.FROZEN = {errCode: "422", msg: "帐号被冻结"};
+    URSError.NOT_MATCH = {errCode: "460", msg: "密码错误"};
+    URSError.ABORT = {errCode: "498", msg: "请求中止"};
+    URSError.NET_ERR = {errCode: "499", msg: "网络异常"};
+    URSError.SERVER_ERR = {errCode: "500", msg: "服务端异常"};
+    URSError.TIMEOUT = {errCode: "504", msg: "超时"};
+    URSError.msgForCode = function(errCode) {
+        if(!errCode) {
             return undefined;
         }
         for(var key in URSError) {
-            if(URSError.hasOwnProperty(key) && key.code === code && key.msg) {
+            if(URSError.hasOwnProperty(key) && key.errCode === errCode && key.msg) {
                 return key.msg;
             }
         }
@@ -94,7 +93,7 @@ define(["jquery", "./codec"], function($, codec){
      *                        cookie: string // NTES_SESS cookie值
      *                    }),
      *                    reject({
-     *                        code: string, // 错误码
+     *                        errCode: string, // 错误码
      *                        msg: string, // 错误描述
      *                        context: string // 参数错误时: 错误的参数名; 登录失败时: 用户名
      *                    })
@@ -147,7 +146,7 @@ define(["jquery", "./codec"], function($, codec){
             var retcode;
             if ("success" === textStatus) {
                 // restr format:
-                // $code\n$description\n\n$details
+                // $errCode\n$description\n\n$details
                 var lines = data.split(/\r\n|\r|\n/);
                 retcode = lines[0];
                 if (retcode === URS_SUCCESS_CODE) {

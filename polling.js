@@ -3,38 +3,37 @@ define(["jquery", "events", "./urs"], function($, events, urs){
 
     /**
      * 长轮询时出现的错误
-     * @param {string} code 错误码
+     * @param {string} errCode 错误码
      * @param {any} context 发生错误时的上下文信息
      */
-    var PollingError = function(code, context) {
+    var PollingError = function(errCode, context) {
         this.context = context;
-        if(typeof(code) === "object" && code.code && code.msg) {
-            this.code = code.code;
-            this.msg = code.msg;
+        if(typeof(errCode) === "object" && errCode.errCode && errCode.msg) {
+            this.errCode = errCode.errCode;
+            this.msg = errCode.msg;
         } else {
-            this.code = "" + code;
-            this.msg = PollingError.msgForCode(this.code);
+            this.errCode = "" + errCode;
+            this.msg = PollingError.msgForCode(this.errCode);
             if(!this.msg) {
-                this.code = PollingError.SERVER_ERR.code;
+                this.errCode = PollingError.SERVER_ERR.errCode;
                 this.msg = PollingError.SERVER_ERR.msg;
             }
         }
     };
     PollingError.prototype = new Error();
     PollingError.prototype.constructor = PollingError;
-    PollingError.name = "PollingError";
-    PollingError.ILLEGAL_PARAM = {code: "illegal param", msg: "参数错误"};
-    PollingError.UNKNOWN_CLIENTID = {code: "unknown clientid", msg: "连接已丢失"};
-    PollingError.EXCEED_MAX_CONN = {code: "exceed max conn", msg: "连接已满"};
-    PollingError.CANNOT_CMD = {code: "cannot cmd", msg: "请求暂时无法处理"};
-    PollingError.SIGNIN_FAIL = {code: "auth failed", msg: "认证失败"};
-    PollingError.SERVER_ERR = {code: "server error", msg: "服务器异常"};
-    PollingError.msgForCode = function(code) {
-        if(!code) {
+    PollingError.ILLEGAL_PARAM = {errCode: "illegal param", msg: "参数错误"};
+    PollingError.UNKNOWN_CLIENTID = {errCode: "unknown clientid", msg: "连接已丢失"};
+    PollingError.EXCEED_MAX_CONN = {errCode: "exceed max conn", msg: "连接已满"};
+    PollingError.CANNOT_CMD = {errCode: "cannot cmd", msg: "请求暂时无法处理"};
+    PollingError.SIGNIN_FAIL = {errCode: "auth failed", msg: "认证失败"};
+    PollingError.SERVER_ERR = {errCode: "server error", msg: "服务器异常"};
+    PollingError.msgForCode = function(errCode) {
+        if(!errCode) {
             return undefined;
         }
         for(var key in PollingError) {
-            if(PollingError.hasOwnProperty(key) && key.code === code && key.msg) {
+            if(PollingError.hasOwnProperty(key) && key.errCode === errCode && key.msg) {
                 return key.msg;
             }
         }
@@ -62,9 +61,9 @@ define(["jquery", "events", "./urs"], function($, events, urs){
     var EVENT_RECEIVE_MAIL = "ReceiveMail";
     var EVENT_ERROR = "Error";
 
-    var parsePollingResponse = function(data, emitter, caller) {
+    var parsePollingResponse = function(data, emitter, invoker) {
         if (!Array.isArray(data)) {
-            emitter.emit(EVENT_ERROR, new PollingError(PollingError.SERVER_ERR, {caller: caller, obj: data}));
+            emitter.emit(EVENT_ERROR, new PollingError(PollingError.SERVER_ERR, {invoker: invoker, obj: data}));
             return;
         }
 
@@ -72,10 +71,10 @@ define(["jquery", "events", "./urs"], function($, events, urs){
             var message = data[i];
             if (!message || !message.successful || !message.channel) {
                 if(!message.error) {
-                    emitter.emit(EVENT_ERROR, new PollingError(PollingError.SERVER_ERR, {caller: caller, obj: message}));
+                    emitter.emit(EVENT_ERROR, new PollingError(PollingError.SERVER_ERR, {invoker: invoker, obj: message}));
                     return;
                 }
-                emitter.emit(EVENT_ERROR, new PollingError(message.error.toLowerCase(), {caller: caller, obj: message}));
+                emitter.emit(EVENT_ERROR, new PollingError(message.error.toLowerCase(), {invoker: invoker, obj: message}));
                 return;
             }
 
@@ -105,7 +104,7 @@ define(["jquery", "events", "./urs"], function($, events, urs){
                     emitter.emit(EVENT_RECEIVE_MAIL, mail);
                 }
             } else {
-                emitter.emit(EVENT_ERROR, new PollingError(PollingError.SERVER_ERR, {caller: caller, obj: message}));
+                emitter.emit(EVENT_ERROR, new PollingError(PollingError.SERVER_ERR, {invoker: invoker, obj: message}));
                 return;
             }
         }
@@ -114,13 +113,13 @@ define(["jquery", "events", "./urs"], function($, events, urs){
     };
     /**
      * 发送请求到polling server
-     * @param {function} caller 调用这个方法的函数
+     * @param {function} invoker 调用这个方法的函数
      * @param {object} emitter EventEmitter
      * @param {string} url polling server接口url
      * @param {object} msg 发送给polling server的消息
      * @return {jqXHR}
      */
-    var sendPollingRequest = function(caller, emitter, url, msg) {
+    var sendPollingRequest = function(invoker, emitter, url, msg) {
         var arr = [msg];
         var message = JSON.stringify(arr);
         var ajaxOpts = {
@@ -135,17 +134,17 @@ define(["jquery", "events", "./urs"], function($, events, urs){
         var jqXHR = $.ajax(ajaxOpts);
         jqXHR.done(function(data, textStatus, jqXHR){
             if("success" === textStatus) {
-                parsePollingResponse(data, emitter, caller);
+                parsePollingResponse(data, emitter, invoker);
             } else {
                 parsePollingResponse({
                     textStatus: textStatus
-                }, emitter, caller);
+                }, emitter, invoker);
             }
         }).fail(function(jqXHR, textStatus, errorThrown){
             parsePollingResponse({
                 textStatus: textStatus,
                 errorThrown: errorThrown
-            }, emitter, caller);
+            }, emitter, invoker);
         });
         return jqXHR;
     };
@@ -261,21 +260,21 @@ define(["jquery", "events", "./urs"], function($, events, urs){
             // 异常处理器
             var errorHandlerMap = {};
             // unknown clientid以及exceed max connection: $RETRY_DELAY后重启
-            errorHandlerMap[PollingError.UNKNOWN_CLIENTID.code] = invokeLater(self.start, RETRY_DELAY);
-            errorHandlerMap[PollingError.EXCEED_MAX_CONN.code] =invokeLater(self.start, RETRY_DELAY);
+            errorHandlerMap[PollingError.UNKNOWN_CLIENTID.errCode] = invokeLater(self.start, RETRY_DELAY);
+            errorHandlerMap[PollingError.EXCEED_MAX_CONN.errCode] =invokeLater(self.start, RETRY_DELAY);
             // sign in polling server fail: 清除cookie后再重启, 强制刷新cookie
-            errorHandlerMap[PollingError.SIGNIN_FAIL.code] = invokeLater(function(){
+            errorHandlerMap[PollingError.SIGNIN_FAIL.errCode] = invokeLater(function(){
                 self.cookie = undefined;
                 self.start();
             }, RETRY_DELAY);
 
             // polling error
             self.on(EVENT_ERROR, function(pollingErr){
-                var handler = errorHandlerMap[pollingErr.code];
+                var handler = errorHandlerMap[pollingErr.errCode];
                 if(handler) {
                     handler();
-                } else if(pollingErr.context.caller){
-                    invokeLater(pollingErr.context.caller, RETRY_DELAY);
+                } else if(pollingErr.context.invoker){
+                    invokeLater(pollingErr.context.invoker, RETRY_DELAY);
                 } else {
                     throw pollingErr;
                 }
